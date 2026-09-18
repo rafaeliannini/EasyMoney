@@ -14,7 +14,7 @@ public class CorsConfig {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/api/**")
-                        .allowedOrigins("http://localhost:5173", "https://finance-web-mu-one.vercel.app") // Porta padrão do Vite
+                        .allowedOrigins("http://localhost:5173", "https://easymoneyappbr.vercel.app") // Porta padrão do Vite
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                         .allowedHeaders("*")
                         .allowCredentials(true);
