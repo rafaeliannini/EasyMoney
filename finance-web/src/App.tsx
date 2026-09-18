@@ -1,187 +1,56 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import type { FormEvent } from 'react';
 import { api } from './services/api';
 import { auth } from './services/firebase';
-import { 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
-  signOut, 
-  onAuthStateChanged 
-} from 'firebase/auth';
-import type { User as FirebaseUser } from 'firebase/auth'; 
+import { GoogleAuthProvider, createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/auth';
+import type { User as FirebaseUser } from 'firebase/auth';
+import './App.css';
 
-// Tipagem do TypeScript para o nosso Usuário do Banco de Dados
-interface User {
-  id: number;
-  name: string;
-  email: string;
-  firebaseUid: string;
-}
+type Route = '/' | '/dashboard' | '/perfil' | '/login' | '/cadastro';
+type TransactionType = 'INCOME' | 'EXPENSE';
+interface Transaction { id: number; description: string; amount: number; type: TransactionType; date: string; wallet?: string; specification?: string; responsible?: string | null; }
+const privateRoutes: Route[] = ['/', '/dashboard', '/perfil'];
+const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+const wallets = ['Conta', 'Vale alimentação', 'Vale flexível'];
+const responsibles = ['Eu', 'Mãe', 'Pai'];
+const expenseSpecifications = ['Restaurantes/delivery', 'Supermercado', 'Farmácia', 'Transporte', 'Presente', 'Lazer', 'Compras pessoais', 'Viagem', 'Academia/esportes', 'Outros'];
+const incomeSpecifications = ['TAGNA', 'Mãe', 'Pai', 'Presentes', 'Mesada'];
+const routeFromUrl = (): Route => { const path = window.location.pathname as Route; return [...privateRoutes, '/login', '/cadastro'].includes(path) ? path : '/'; };
 
 function App() {
-  // Estados de Autenticação (Firebase e Tela)
-  const [authUser, setAuthUser] = useState<FirebaseUser | null>(null);
-  const [isRegistering, setIsRegistering] = useState(false); // Alterna entre Login e Cadastro
-  
-  // Estados dos Formulários
-  const [authName, setAuthName] = useState(''); // Usado apenas no cadastro
-  const [authEmail, setAuthEmail] = useState('');
-  const [authPassword, setAuthPassword] = useState('');
-
-  // Estados do CRUD (Backend)
-  const [users, setUsers] = useState<User[]>([]);
-
-  // 1. OUVINTE DE SESSÃO
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setAuthUser(user);
-      if (user) {
-        fetchUsers(); 
-      }
-    });
-    return () => unsubscribe();
-  }, []);
-
-  // 2. FUNÇÕES DO FIREBASE E INTEGRAÇÃO COM BACKEND
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await signInWithEmailAndPassword(auth, authEmail, authPassword);
-      setAuthEmail('');
-      setAuthPassword('');
-    } catch (error) {
-      console.error("Erro no login", error);
-      alert("Erro ao fazer login. Verifique as credenciais.");
-    }
-  };
-
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault(); // Evita o recarregamento da página
-    try {
-      // 1. Cria o usuário no Firebase
-      const userCredential = await createUserWithEmailAndPassword(auth, authEmail, authPassword);
-      
-      // 2. Imediatamente salva os dados no PostgreSQL via API Java
-      await api.post('/users', { 
-        name: authName, 
-        email: authEmail, 
-        firebaseUid: userCredential.user.uid 
-      });
-
-      // 3. Limpa os campos
-      setAuthName('');
-      setAuthEmail('');
-      setAuthPassword('');
-      
-      // O onAuthStateChanged vai detectar o login automático e buscar a lista atualizada
-    } catch (error) {
-      console.error("Erro no cadastro", error);
-      alert("Erro ao cadastrar. O e-mail pode já estar em uso.");
-    }
-  };
-
-  const handleLogout = async () => {
-    await signOut(auth);
-    setUsers([]); 
-  };
-
-  // 3. FUNÇÕES DE BUSCA E EXCLUSÃO (API JAVA)
-  const fetchUsers = async () => {
-    try {
-      const response = await api.get('/users');
-      setUsers(response.data);
-    } catch (error) {
-      console.error("Erro ao buscar usuários", error);
-    }
-  };
-
-  const handleDelete = async (id: number) => {
-    try {
-      await api.delete(`/users/${id}`);
-      fetchUsers();
-    } catch (error) {
-      console.error("Erro ao deletar usuário", error);
-    }
-  };
-
-  // 4. RENDERIZAÇÃO CONDICIONAL (TELAS DE ACESSO)
-  if (!authUser) {
-    return (
-      <div style={{ padding: '2rem', fontFamily: 'sans-serif', maxWidth: '400px', margin: '0 auto', border: '1px solid #ccc', borderRadius: '8px', marginTop: '50px' }}>
-        <h2 style={{ textAlign: 'center' }}>{isRegistering ? 'Criar Conta' : 'Acessar Conta'}</h2>
-        
-        <form onSubmit={isRegistering ? handleRegister : handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-          
-          {isRegistering && (
-            <input 
-              type="text" 
-              placeholder="Seu Nome Completo" 
-              value={authName} 
-              onChange={e => setAuthName(e.target.value)} 
-              required 
-              style={{ padding: '10px' }}
-            />
-          )}
-
-          <input 
-            type="email" 
-            placeholder="E-mail" 
-            value={authEmail} 
-            onChange={e => setAuthEmail(e.target.value)} 
-            required 
-            style={{ padding: '10px' }}
-          />
-          <input 
-            type="password" 
-            placeholder="Senha (mínimo 6 caracteres)" 
-            value={authPassword} 
-            onChange={e => setAuthPassword(e.target.value)} 
-            required 
-            style={{ padding: '10px' }}
-          />
-          
-          <button type="submit" style={{ padding: '10px', background: '#007BFF', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '16px' }}>
-            {isRegistering ? 'Cadastrar e Entrar' : 'Entrar'}
-          </button>
-        </form>
-
-        <div style={{ textAlign: 'center', marginTop: '15px' }}>
-          <button 
-            type="button" 
-            onClick={() => setIsRegistering(!isRegistering)} 
-            style={{ background: 'none', border: 'none', color: '#007BFF', cursor: 'pointer', textDecoration: 'underline' }}>
-            {isRegistering ? 'Já tenho uma conta. Fazer Login' : 'Não tem conta? Cadastre-se'}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // 5. RENDERIZAÇÃO CONDICIONAL (TELA DO SISTEMA)
-  return (
-    <div style={{ padding: '2rem', fontFamily: 'sans-serif', maxWidth: '600px', margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #eee', paddingBottom: '10px', marginBottom: '20px' }}>
-        <h2>Dashboard Financeiro</h2>
-        <button onClick={handleLogout} style={{ background: '#f44336', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '4px', cursor: 'pointer' }}>
-          Sair
-        </button>
-      </div>
-      
-      <p>Logado no Firebase como: <strong>{authUser.email}</strong></p>
-      
-      <h3>Usuários registrados no Banco de Dados (PostgreSQL)</h3>
-      <ul style={{ listStyle: 'none', padding: 0 }}>
-        {users.map(user => (
-          <li key={user.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '15px', borderBottom: '1px solid #eee', background: '#f9f9f9', marginBottom: '5px', borderRadius: '4px' }}>
-            <div>
-              <strong>{user.name}</strong> <br/>
-              <small>{user.email}</small>
-            </div>
-            <button onClick={() => handleDelete(user.id)} style={{ color: 'red', cursor: 'pointer', background: 'none', border: 'none', fontWeight: 'bold' }}>Excluir</button>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
+  const [user, setUser] = useState<FirebaseUser | null>(null); const [authReady, setAuthReady] = useState(false);
+  const [route, setRoute] = useState<Route>(routeFromUrl); const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(false); const [modalOpen, setModalOpen] = useState(false); const [notice, setNotice] = useState(''); const [syncVersion, setSyncVersion] = useState(0);
+  const navigate = (to: Route) => { if (window.location.pathname !== to) window.history.pushState({}, '', to); setRoute(to); };
+  useEffect(() => { const pop = () => setRoute(routeFromUrl()); window.addEventListener('popstate', pop); return () => window.removeEventListener('popstate', pop); }, []);
+  useEffect(() => onAuthStateChanged(auth, (currentUser) => { setUser(currentUser); setAuthReady(true); }), []);
+  useEffect(() => { if (!authReady) return; if (!user && privateRoutes.includes(route)) navigate('/login'); if (user && (route === '/login' || route === '/cadastro')) navigate('/'); }, [authReady, user, route]);
+  const loadTransactions = async () => { if (!user) return; setLoading(true); try { const response = await api.get<Transaction[]>('/transactions'); setTransactions(response.data); } catch (error) { console.error(error); setNotice('Não foi possível carregar suas transações agora.'); } finally { setLoading(false); } };
+  useEffect(() => { void loadTransactions(); }, [user, syncVersion]);
+  const stats = useMemo(() => { const now = new Date(); const month = transactions.filter(({ date }) => { const itemDate = new Date(`${date}T12:00:00`); return itemDate.getMonth() === now.getMonth() && itemDate.getFullYear() === now.getFullYear(); }); const income = month.filter((item) => item.type === 'INCOME').reduce((sum, item) => sum + Number(item.amount), 0); const expense = month.filter((item) => item.type === 'EXPENSE').reduce((sum, item) => sum + Number(item.amount), 0); const balance = transactions.reduce((sum, item) => sum + (item.type === 'INCOME' ? Number(item.amount) : -Number(item.amount)), 0); return { balance, income, expense }; }, [transactions]);
+  const syncUser = async (firebaseUser: FirebaseUser, name?: string) => { await api.post('/users', { name: name || firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Usuário' }); setSyncVersion((version) => version + 1); };
+  if (!authReady) return <main className="loading-screen">Carregando sua conta…</main>;
+  if (!user) return <AuthScreen route={route} navigate={navigate} onAuthenticated={syncUser} />;
+  return <div className="app-shell"><header className="topbar"><button className="brand" onClick={() => navigate('/')} aria-label="Ir para visão geral">Easy<span>Money</span></button><nav aria-label="Navegação principal"><Nav active={route === '/'} onClick={() => navigate('/')}>Visão geral</Nav><Nav active={route === '/dashboard'} onClick={() => navigate('/dashboard')}>Dashboard</Nav><Nav active={route === '/perfil'} onClick={() => navigate('/perfil')}>Perfil</Nav></nav><button className="logout" onClick={() => void signOut(auth)}>Sair</button></header><main className="content">{notice && <div className="notice" role="alert">{notice}<button onClick={() => setNotice('')} aria-label="Fechar aviso">×</button></div>}{route === '/' && <Overview stats={stats} transactions={transactions} loading={loading} onNew={() => setModalOpen(true)} />}{route === '/dashboard' && <Dashboard stats={stats} />}{route === '/perfil' && <Profile user={user} />}</main><button className="fab" onClick={() => setModalOpen(true)} aria-label="Criar nova transação">+</button>{modalOpen && <TransactionModal onClose={() => setModalOpen(false)} onCreated={async () => { setModalOpen(false); await loadTransactions(); }} />}</div>;
 }
 
+function AuthScreen({ route, navigate, onAuthenticated }: { route: Route; navigate: (route: Route) => void; onAuthenticated: (user: FirebaseUser, name?: string) => Promise<void> }) { const registering = route === '/cadastro'; const [name, setName] = useState(''); const [email, setEmail] = useState(''); const [password, setPassword] = useState(''); const [error, setError] = useState(''); const [submitting, setSubmitting] = useState(false); const submit = async (event: FormEvent) => { event.preventDefault(); setError(''); setSubmitting(true); try { const credential = registering ? await createUserWithEmailAndPassword(auth, email, password) : await signInWithEmailAndPassword(auth, email, password); if (registering) await onAuthenticated(credential.user, name); navigate('/'); } catch (reason) { console.error(reason); setError(registering ? 'Não foi possível criar a conta. Confira os dados e tente novamente.' : 'E-mail ou senha inválidos.'); } finally { setSubmitting(false); } }; const google = async () => { setError(''); setSubmitting(true); try { const result = await signInWithPopup(auth, new GoogleAuthProvider()); await onAuthenticated(result.user); navigate('/'); } catch (reason) { console.error(reason); setError('Não foi possível entrar com Google. Tente novamente.'); } finally { setSubmitting(false); } }; return <main className="auth-page"><section className="auth-card"><div className="auth-brand">Easy<span>Money</span></div><p className="eyebrow">Sua vida financeira, em ordem</p><h1>{registering ? 'Crie sua conta' : 'Que bom ter você de volta'}</h1><p className="auth-description">{registering ? 'Comece a acompanhar seu dinheiro em poucos minutos.' : 'Entre para ver como estão suas finanças.'}</p><form onSubmit={submit}>{registering && <label>Nome<input value={name} onChange={(event) => setName(event.target.value)} required autoComplete="name" /></label>}<label>E-mail<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required autoComplete="email" /></label><label>Senha<input type="password" minLength={6} value={password} onChange={(event) => setPassword(event.target.value)} required autoComplete={registering ? 'new-password' : 'current-password'} /></label>{error && <p className="form-error">{error}</p>}<button className="primary-button" disabled={submitting}>{submitting ? 'Aguarde…' : registering ? 'Criar conta' : 'Entrar'}</button></form><div className="divider"><span>ou</span></div><button className="google-button" onClick={() => void google()} disabled={submitting}><b>G</b> Continuar com Google</button><p className="auth-switch">{registering ? 'Já possui uma conta?' : 'Ainda não tem uma conta?'} <button onClick={() => navigate(registering ? '/login' : '/cadastro')}>{registering ? 'Entrar' : 'Cadastre-se'}</button></p></section></main>; }
+function Overview({ stats, transactions, loading, onNew }: { stats: Stats; transactions: Transaction[]; loading: boolean; onNew: () => void }) { return <><section className="page-heading"><div><p className="eyebrow">Visão geral</p><h1>Olá, organize seu mês.</h1><p>Acompanhe suas movimentações e mantenha o controle.</p></div><button className="primary-button new-button" onClick={onNew}>+ Nova transação</button></section><Cards stats={stats}/><section className="transactions-section"><div className="section-title"><div><h2>Transações recentes</h2><p>Suas últimas movimentações.</p></div><button className="text-button" onClick={onNew}>Adicionar</button></div>{loading ? <p className="empty-state">Carregando transações…</p> : transactions.length === 0 ? <p className="empty-state">Nenhuma transação ainda. Adicione a primeira para ver seu resumo.</p> : <div className="transaction-list">{transactions.slice(0, 10).map((item) => <TransactionRow key={item.id} item={item}/>)}</div>}</section></>; }
+type Stats = { balance: number; income: number; expense: number };
+function Cards({ stats }: { stats: Stats }) { return <section className="summary-grid"><Summary title="Saldo atual" value={stats.balance} tone="balance"/><Summary title="Receitas do mês" value={stats.income} tone="income"/><Summary title="Despesas do mês" value={stats.expense} tone="expense"/></section>; }
+function Summary({ title, value, tone }: { title: string; value: number; tone: string }) { return <article className={`summary-card ${tone}`}><p>{title}</p><strong>{currency.format(value)}</strong><span>{tone === 'balance' ? 'Total acumulado' : 'No mês atual'}</span></article>; }
+function TransactionRow({ item }: { item: Transaction }) { const income = item.type === 'INCOME'; return <article className="transaction-row"><div className={`transaction-icon ${income ? 'income-icon' : 'expense-icon'}`}>{income ? '↗' : '↘'}</div><div className="transaction-info"><strong>{item.specification || item.description}</strong><span>{[item.wallet, item.responsible, new Date(`${item.date}T12:00:00`).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })].filter(Boolean).join(' · ')}</span></div><strong className={income ? 'amount-income' : 'amount-expense'}>{income ? '+' : '-'} {currency.format(Number(item.amount))}</strong></article>; }
+function Dashboard({ stats }: { stats: Stats }) { const total = stats.income + stats.expense; const percent = total ? Math.round((stats.income / total) * 100) : 0; return <section><div className="page-heading"><div><p className="eyebrow">Dashboard</p><h1>Resumo do mês</h1><p>Uma leitura rápida das entradas e saídas deste mês.</p></div></div><Cards stats={stats}/><section className="insight-card"><h2>Composição das movimentações</h2><div className="progress"><span style={{ width: `${percent}%` }}/></div><p>{percent}% do volume movimentado neste mês foram receitas.</p></section></section>; }
+function Profile({ user }: { user: FirebaseUser }) { return <section className="profile-card"><p className="eyebrow">Minha conta</p><h1>Perfil</h1><div className="avatar">{(user.displayName || user.email || 'U').charAt(0).toUpperCase()}</div><h2>{user.displayName || 'Usuário EasyMoney'}</h2><p>{user.email}</p><p className="profile-meta">Conta conectada com Firebase Auth</p></section>; }
+function Nav({ active, onClick, children }: { active: boolean; onClick: () => void; children: string }) { return <button className={active ? 'nav-active' : ''} onClick={onClick}>{children}</button>; }
+function TransactionModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => Promise<void> }) {
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10)); const [type, setType] = useState<TransactionType>('EXPENSE');
+  const [wallet, setWallet] = useState(wallets[0]); const [specification, setSpecification] = useState(expenseSpecifications[0]); const [responsible, setResponsible] = useState(responsibles[0]);
+  const [cents, setCents] = useState(''); const [error, setError] = useState(''); const [saving, setSaving] = useState(false);
+  const specifications = type === 'EXPENSE' ? expenseSpecifications : incomeSpecifications;
+  const changeType = (newType: TransactionType) => { setType(newType); setSpecification(newType === 'EXPENSE' ? expenseSpecifications[0] : incomeSpecifications[0]); };
+  const changeMoney = (value: string) => setCents(value.replace(/\D/g, '').replace(/^0+(?=\d)/, ''));
+  const submit = async (event: FormEvent) => { event.preventDefault(); if (!Number(cents)) { setError('Informe um valor maior que zero.'); return; } setSaving(true); setError(''); try { await api.post('/transactions', { amount: Number(cents) / 100, date, type, wallet, specification, responsible: type === 'EXPENSE' ? responsible : null }); await onCreated(); } catch (reason) { console.error(reason); setError('Não foi possível salvar a transação.'); } finally { setSaving(false); } };
+  return <div className="modal-backdrop" role="presentation" onMouseDown={onClose}><section className="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" onMouseDown={(event) => event.stopPropagation()}><button className="close-modal" onClick={onClose} aria-label="Fechar">×</button><p className="eyebrow">Nova movimentação</p><h2 id="modal-title">Adicionar transação</h2><form onSubmit={submit}><label>Tipo<select value={type} onChange={(event) => changeType(event.target.value as TransactionType)}><option value="EXPENSE">Despesa</option><option value="INCOME">Receita</option></select></label><label>Especificação<select value={specification} onChange={(event) => setSpecification(event.target.value)}>{specifications.map((item) => <option key={item}>{item}</option>)}</select></label><label>Carteira<select value={wallet} onChange={(event) => setWallet(event.target.value)}>{wallets.map((item) => <option key={item}>{item}</option>)}</select></label>{type === 'EXPENSE' && <label>Responsável<select value={responsible} onChange={(event) => setResponsible(event.target.value)}>{responsibles.map((item) => <option key={item}>{item}</option>)}</select></label>}<label>Valor<input type="text" inputMode="numeric" value={currency.format(Number(cents || 0) / 100)} onChange={(event) => changeMoney(event.target.value)} aria-label="Valor em reais" required /></label><label>Data<input type="date" value={date} onChange={(event) => setDate(event.target.value)} required /></label>{error && <p className="form-error">{error}</p>}<button className="primary-button" disabled={saving}>{saving ? 'Salvando…' : 'Salvar transação'}</button></form></section></div>;
+}
 export default App;

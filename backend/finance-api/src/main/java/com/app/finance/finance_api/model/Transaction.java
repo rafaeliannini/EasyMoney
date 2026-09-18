@@ -30,6 +30,17 @@ public class Transaction {
     @Column(nullable = false)
     private LocalDate date;
 
+    // Nullable para que o Hibernate consiga migrar lançamentos já existentes;
+    // o controller exige ambos em toda nova transação.
+    @Column
+    private String wallet;
+
+    @Column
+    private String specification;
+
+    // Só se aplica a despesas; receitas não possuem responsável.
+    private String responsible;
+
     // Relacionamento: Várias transações pertencem a um Usuário
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
