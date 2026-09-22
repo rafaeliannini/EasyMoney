@@ -55,7 +55,9 @@ public class TransactionController {
         transaction.setDate(request.date());
         transaction.setWallet(request.wallet());
         transaction.setSpecification(request.specification());
-        transaction.setResponsible("EXPENSE".equals(request.type()) ? request.responsible() : null);
+        // Receitas também podem ter responsável para alimentar os gráficos do dashboard.
+        // O null continua aceito para manter compatibilidade com lançamentos antigos.
+        transaction.setResponsible(RESPONSIBLES.contains(request.responsible()) ? request.responsible() : null);
         transaction.setUser(currentUser(jwt));
         return TransactionResponse.from(transactionRepository.save(transaction));
     }
@@ -66,7 +68,8 @@ public class TransactionController {
                 || !WALLETS.contains(request.wallet())) return false;
         if ("EXPENSE".equals(request.type()))
             return EXPENSE_SPECIFICATIONS.contains(request.specification()) && RESPONSIBLES.contains(request.responsible());
-        return INCOME_SPECIFICATIONS.contains(request.specification());
+        return INCOME_SPECIFICATIONS.contains(request.specification())
+                && (request.responsible() == null || RESPONSIBLES.contains(request.responsible()));
     }
 
     private User currentUser(Jwt jwt) {
