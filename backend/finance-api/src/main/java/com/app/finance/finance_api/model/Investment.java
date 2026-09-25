@@ -19,6 +19,9 @@ public class Investment {
     @Column(nullable = false) private String category;
     @Column(nullable = false, precision = 19, scale = 2) private BigDecimal amount;
     @Column(precision = 19, scale = 2) private BigDecimal goal;
+    @Column(precision = 8, scale = 2) private BigDecimal cdiPercent;
+    private java.time.LocalDate lastAccruedDate;
+    @Column(precision = 30, scale = 12) private BigDecimal accruedAmount;
     @ManyToOne @JoinColumn(name = "user_id", nullable = false)
     private User user;
 }

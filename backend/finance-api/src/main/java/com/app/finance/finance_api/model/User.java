@@ -22,6 +22,9 @@ public class User {
     @Column(nullable = false, unique = true)
     private String email;
 
+    @Column(length = 2048)
+    private String photoUrl;
+
     // Adicione este campo na classe User existente
     @Column(nullable = false, unique = true)
     private String firebaseUid;

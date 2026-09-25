@@ -44,6 +44,12 @@ public class Transaction {
     // Só se aplica a despesas; receitas não possuem responsável.
     private String responsible;
 
+    private String installmentGroup;
+    private Integer installmentNumber;
+    private Integer installmentCount;
+    @Column(precision = 19, scale = 2)
+    private BigDecimal installmentTotal;
+
     // Relacionamento: Várias transações pertencem a um Usuário
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)

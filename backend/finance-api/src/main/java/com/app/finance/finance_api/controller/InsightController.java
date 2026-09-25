@@ -19,8 +19,8 @@ public class InsightController {
     private final TransactionRepository transactions; private final UserRepository users;
     public InsightController(TransactionRepository transactions, UserRepository users) { this.transactions = transactions; this.users = users; }
     @GetMapping("/dashboard") public Dashboard dashboard(@AuthenticationPrincipal Jwt jwt) {
-        Long id = user(jwt).getId(); LocalDate today = LocalDate.now(); YearMonth month = YearMonth.from(today); LocalDate start = month.atDay(1); LocalDate end = month.plusMonths(1).atDay(1);
-        return new Dashboard(map(transactions.monthlyTotals(id, month.minusMonths(11).atDay(1))), map(transactions.expensesByCategory(id,start,end)), map(transactions.expensesByResponsible(id,start,end)), map(transactions.incomeBySource(id,start,end)), map(transactions.dailyExpenses(id,today.minusDays(364),end)));
+        Long id = user(jwt).getId(); LocalDate today = LocalDate.now(java.time.ZoneId.of("America/Sao_Paulo")); YearMonth month = YearMonth.from(today); LocalDate start = month.atDay(1); LocalDate end = today.plusDays(1);
+        return new Dashboard(map(transactions.monthlyTotals(id, month.minusMonths(11).atDay(1),end)), map(transactions.expensesByCategory(id,start,end)), map(transactions.expensesByResponsible(id,start,end)), map(transactions.incomeBySource(id,start,end)), map(transactions.dailyExpenses(id,today.minusDays(364),end)));
     }
     private User user(Jwt jwt) { return users.findByFirebaseUid(jwt.getSubject()).orElseThrow(() -> new IllegalStateException("Usuário não encontrado no banco de dados.")); }
     private List<Value> map(List<InsightProjection> values) { return values.stream().map(v -> new Value(v.getLabel(), safe(v.getIncome()), safe(v.getExpense()), safe(v.getTotal()))).toList(); }

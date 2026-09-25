@@ -1,0 +1,2 @@
+.profile-settings{text-align:left}.profile-settings form{display:grid;gap:15px}.profile-settings label{display:grid;gap:7px;font-size:13px;font-weight:700}.profile-settings input{width:100%;border:1px solid #e5d7d8;border-radius:8px;padding:11px 12px}.profile-settings p{line-height:1.5}.modal{max-height:90vh;overflow-y:auto}
+.profile-settings textarea{width:100%;border:1px solid #e5d7d8;border-radius:8px;padding:11px 12px;font:inherit;resize:vertical}.avatar{object-fit:cover}@media(max-width:680px){.logout{display:block;padding:8px;font-size:11px}.profile-card{padding:12px}}

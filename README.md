@@ -1,133 +1,193 @@
 # EasyMoney
 
-Para rodar o backend (local)
-cd backend/finance-api 
-.\mvnw spring-boot:run
+O **EasyMoney** é uma aplicação web de controle financeiro pessoal, criada para transformar uma organização antes feita em planilhas em uma experiência mais prática e visual.
 
-Para rodar o frontend (dev local)
+O objetivo é reunir receitas, despesas, parcelamentos e investimentos em um só lugar, permitindo acompanhar o saldo, entender os hábitos de consumo e visualizar o progresso das metas financeiras.
+
+**[Acesse o EasyMoney oficial → easymoneyappbr.vercel.app](https://easymoneyappbr.vercel.app)**
+
+## Funcionalidades
+
+| Área | O que você pode fazer |
+| --- | --- |
+| Visão geral | Consultar saldo, receitas e despesas do mês, taxa de poupança e movimentações recentes. |
+| Transações | Registrar receitas e despesas com data, conta, responsável e categoria ou fonte/pagador. |
+| Parcelamentos | Informar o valor total, valor da parcela e quantidade de meses, com geração dos lançamentos mensais. |
+| Lançamentos futuros | Consultar movimentações agendadas, que entram no saldo e nas análises a partir da sua data. |
+| Dashboard | Explorar gráficos de fluxo de caixa, despesas e receitas, com filtros por período, tipo, responsável, categoria e conta. |
+| Investimentos | Cadastrar e editar posições, agrupar por tipo e acompanhar valores e metas. |
+| Rendimento por CDI | Configurar percentual do CDI e data do saldo para atualização automática de uma estimativa bruta. |
+| Perfil | Alterar nome, e-mail, senha e foto por URL HTTPS; personalizar contas, responsáveis, fontes e tipos de investimento. |
+| Autenticação | Entrar com Google ou e-mail/senha e vincular os dois métodos à mesma conta. |
+
+Os dados são associados ao usuário autenticado. A interface tem adaptações para telas menores, e a troca de contas limpa o estado da sessão anterior.
+
+As funcionalidades acima descrevem o código deste repositório. A versão publicada pode acompanhar um estágio diferente do desenvolvimento. Detalhes de implementação e verificações externas pendentes estão na [documentação técnica](docs/implementacao-proximos-passos.md).
+
+## Tecnologias
+
+| Camada | Tecnologias |
+| --- | --- |
+| Frontend | React, TypeScript, Vite, Recharts e Axios |
+| Backend | Java, Spring Boot, Spring Security e Spring Data JPA |
+| Banco de dados | PostgreSQL |
+| Autenticação | Firebase Authentication, com validação de tokens JWT na API |
+| Ambiente local | Docker Compose para o PostgreSQL e Maven Wrapper para o backend |
+| Ambiente Produtivo | Vercel (front-end), Render(back-end), Neon (Banco de dados) |
+| Testes | Vitest, Testing Library, JUnit e testes de integração com Spring Boot |
+
+O frontend consulta a API REST autenticada, que persiste e agrega os dados no PostgreSQL. O Firebase gerencia o acesso à conta; os registros financeiros ficam no banco da aplicação.
+
+## Como executar localmente
+
+### Pré-requisitos
+
+- Git.
+- Node.js 24 e npm.
+- JDK 21 ou superior, com `JAVA_HOME` configurado.
+- Docker com Docker Compose, em execução.
+- Um projeto Firebase com aplicativo Web e Authentication configurados.
+
+Não é necessário instalar o Maven separadamente: o backend inclui o Maven Wrapper. Os comandos abaixo usam PowerShell no Windows; há uma alternativa para iniciar o backend no Linux/macOS.
+
+### 1. Obter o projeto
+
+```powershell
+git clone https://github.com/rafaeliannini/EasyMoney.git
+cd EasyMoney
+```
+
+### 2. Iniciar o PostgreSQL
+
+Na raiz do repositório:
+
+```powershell
+docker compose up -d postgres
+```
+
+O Compose inicia somente o banco. Backend e frontend são executados nos próximos passos, em terminais separados.
+
+| Configuração local | Valor padrão |
+| --- | --- |
+| Host e porta | `localhost:5433` |
+| Banco | `finance_db` |
+| Usuário | `finance_user` |
+| Senha de desenvolvimento | `finance_password` |
+
+Esses valores correspondem ao `docker-compose.yml` e aos padrões da API. O volume `postgres_data` mantém os dados entre reinicializações. Para parar o banco sem remover o volume, execute `docker compose down` na raiz.
+
+### 3. Configurar o Firebase e o frontend
+
+No Firebase, registre um aplicativo Web, habilite os provedores **E-mail/senha** e **Google** em Authentication e inclua `localhost` nos domínios autorizados.
+
+Crie `finance-web/.env.local` com os dados do seu aplicativo Web:
+
+```dotenv
+VITE_API_URL=http://localhost:8080/api
+VITE_FIREBASE_API_KEY=sua-chave-do-aplicativo-web
+VITE_FIREBASE_AUTH_DOMAIN=seu-projeto.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=seu-projeto
+```
+
+Use os valores fornecidos pelo Firebase, substituindo os exemplos. O arquivo `.env.local` já é ignorado pelo Git e tem precedência sobre `.env`. Reinicie o Vite quando alterar essas variáveis. Variáveis `VITE_*` são incluídas no frontend: não coloque nelas credenciais administrativas ou de banco de dados.
+
+### 4. Executar o backend
+
+Em um terminal, a partir da raiz:
+
+```powershell
+cd backend/finance-api
+.\mvnw.cmd spring-boot:run
+```
+
+No Linux/macOS, use `./mvnw spring-boot:run` no mesmo diretório.
+
+**Ao usar um projeto Firebase próprio**, configure o emissor dos tokens no mesmo terminal, antes de iniciar a API:
+
+```powershell
+$env:SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI="https://securetoken.google.com/seu-projeto"
+.\mvnw.cmd spring-boot:run
+```
+
+O ID desse projeto deve ser o mesmo de `VITE_FIREBASE_PROJECT_ID`. Sem a substituição, o backend usa o projeto definido em [application.yml](backend/finance-api/src/main/resources/application.yml).
+
+A API inicia em `http://localhost:8080`. Confira seu funcionamento em [http://localhost:8080/api/health](http://localhost:8080/api/health). As rotas de dados exigem autenticação.
+
+### 5. Executar o frontend
+
+Em outro terminal, a partir da raiz:
+
+```powershell
 cd finance-web
+npm ci
 npm run dev
+```
 
-Proximos passos:
-Adicionar algum jeito de quem loga com o google poder logar com o email e quem loga com email poder logar com google se possivel.
+Abra **[http://localhost:5173](http://localhost:5173)** e crie uma conta ou faça login. Nos próximos usos, basta executar `npm run dev` se as dependências já estiverem instaladas e atualizadas.
 
-Corrigir bug que ao trocar de conta você ainda ve os dados do login anterior até dar f5.
+O CORS da API permite `http://localhost:5173` e o domínio oficial. Se o Vite iniciar em outra porta, libere a porta 5173 ou ajuste [CorsConfig.java](backend/finance-api/src/main/java/com/app/finance/finance_api/config/CorsConfig.java).
 
-Adicionar a possibilidade de colocar despesas parceladas com o valor total, valor da parcela e meses a pagar.
+### Configurações opcionais do backend
 
-Adicionar no perfil a possibilidade de trocar os dados como tipos do investimentos e na parte de transações os responsaveis, contas e especifição das receitas(trocando o nome para por exemplo pagador ou fonte).
+Configure estas variáveis no ambiente do processo da API quando precisar substituir os padrões:
 
-Adicionar ao perfil possibilidade de trocar nome, email, senha, e adicionar/alterar foto, mudanças tem que refletir no firebase e no banco de dados.
+| Variável | Finalidade / padrão |
+| --- | --- |
+| `DB_URL` | Conexão JDBC; padrão `jdbc:postgresql://localhost:5433/finance_db`. |
+| `DB_USER` | Usuário do banco; padrão `finance_user`. |
+| `DB_PASSWORD` | Senha do banco; padrão local `finance_password`. |
+| `SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI` | Emissor dos tokens do projeto Firebase usado pelo frontend. |
+| `FINANCE_CDI_ENABLED` | Use `false` para desativar a atualização automática por CDI. |
 
-Adicionar a possibilidade de nos investimentos colocar quando for caixinhas ou rendas fixas a % do cdi e todos os dias calcular um novo valor e atualizar automaticamente o investimento.
+O backend não lê automaticamente o `.env.local` do frontend. A criação e atualização das tabelas seguem a configuração atual do Hibernate (`ddl-auto: update`).
 
-1. Orçamento e planejamento mensal
-- Limites de gastos por categoria.
-- Comparação “planejado × realizado”.
-- Despesas e receitas recorrentes.
-- Projeção do saldo até o fim do mês.
-- Identificação automática de assinaturas.
-- Alertas como: “Você já utilizou 85% do orçamento de alimentação”.
+## Testes e build
 
-2. Patrimônio líquido
-Crie uma visão consolidada com:
-- Dinheiro em contas.
-- Investimentos.
-- Imóveis e outros bens.
-- Cartões, financiamentos e demais dívidas.
-- Evolução do patrimônio líquido ao longo do tempo.
+Backend, com o PostgreSQL disponível:
 
-3. Reserva de emergência
-- Meta calculada em meses de despesas essenciais.
-- Configuração recomendada, por exemplo, entre 3 e 12 meses.
-- Indicador de cobertura: “Sua reserva cobre 4,7 meses”.
-- Separação entre dinheiro disponível e investimentos sem liquidez imediata.
+```powershell
+cd backend/finance-api
+.\mvnw.cmd test
+```
 
-4. Análise real da carteira
-Além de mostrar o valor investido:
-- Alocação por classe: renda fixa, ações, FIIs, ETFs, cripto etc.
-- Distribuição por instituição, setor, país, indexador e moeda.
-- Rentabilidade nominal e real, descontando a inflação.
-- Comparação com CDI, Ibovespa, IPCA e outros benchmarks.
-- Rentabilidade ponderada por aportes.
-- Histórico de aportes, resgates e valorização.
-- Concentração e exposição excessiva.
-- Vencimentos de renda fixa.
+Frontend:
 
-5. Alocação desejada e rebalanceamento
-O usuário define, por exemplo:
-- 50% renda fixa.
-- 25% ETFs.
-- 15% FIIs.
-- 10% ações.
-O app mostra:
-- Alocação atual versus desejada.
-- Classes acima ou abaixo da meta.
-- Sugestão de como distribuir o próximo aporte.
-- Simulação antes de realizar uma movimentação.
+```powershell
+cd finance-web
+npm test
+npm run lint
+npm run build
+```
 
-6. Metas mais inteligentes
-Você já cria metas com valores investidos; pode evoluí-las com:
-- Data-alvo.
-- Inflação estimada.
-- Rentabilidade esperada.
-- Aporte mensal necessário.
-- Probabilidade ou margem de segurança.
-- Cenários conservador, base e otimista.
-- Simulação de atraso ou aumento do aporte.
-- Metas compartilhadas entre pessoas.
+O build do frontend é gerado em `finance-web/dist`. Para inspecioná-lo localmente, execute `npm run preview`; o acesso autenticado à API também depende de liberar a origem dessa prévia no CORS.
 
-7. Proventos e renda passiva
-- Dividendos, juros e rendimentos de FIIs.
-- Calendário de recebimentos.
-- Renda passiva mensal e anual.
-- Yield sobre o custo.
-- Proventos previstos.
-- Progresso até cobrir determinada despesa ou percentual do custo de vida.
+Os testes cobrem isolamento de sessões, vinculação de acesso, perfil, parcelamentos, preferências e cálculo de CDI. Os testes de integração do backend utilizam PostgreSQL com rollback; os testes do frontend simulam os serviços externos.
 
-8. Dívidas e estratégia de quitação
-- Cadastro de empréstimos, financiamentos e parcelamentos.
-- Taxa de juros e custo total.
-- Cronograma de parcelas.
-- Simulação de amortização antecipada.
-- Comparação entre investir ou quitar dívida.
-- Estratégias “menor saldo primeiro” e “maior juros primeiro”.
+## Sobre o CDI e a conta
 
-9. Simulador de decisões
-Uma área de “E se?” pode diferenciar bastante o produto:
-- E se eu aumentar meu aporte em R$ 300?
-- E se a inflação subir?
-- E se eu comprar um carro?
-- E se eu perder minha renda por três meses?
-- E se eu antecipar este financiamento?
-- Quando posso viver de renda?
-- Por quanto tempo meu patrimônio sustentaria minhas despesas?
+- O CDI é uma **estimativa bruta**, sem desconto de impostos, taxas ou regras particulares de cada produto. A fonte é a série SGS 12 do Banco Central.
+- A API tenta atualizar os investimentos após o primeiro minuto de execução e, depois, a cada hora, usando cotações publicadas até o dia anterior. O backend precisa estar em execução; indisponibilidade da fonte preserva o último saldo calculado.
+- A mudança de e-mail exige confirmação pelo Firebase. Depois, use **Atualizar conta** no Perfil ou faça login novamente para sincronizar o banco.
+- A vinculação de provedores mantém os dados da mesma conta; contas já criadas separadamente não são mescladas automaticamente.
+- O cadastro financeiro é manual. Importação de planilhas e integração com instituições financeiras estão entre as evoluções planejadas.
 
-10. Automação e importação
-- Importação de CSV/OFX.
-- Leitura de faturas.
-- Regras automáticas de categorização.
-- Detecção de transferências entre contas para não contá-las como receita ou despesa.
-- Conciliação de transações duplicadas.
-- Integração com instituições financeiras.
+## Estrutura do repositório
 
-11. Alertas realmente úteis
-- Gasto fora do padrão.
-- Saldo insuficiente para uma conta futura.
-- Concentração elevada em um ativo ou instituição.
-- Renda fixa próxima do vencimento.
-- Meta atrasada.
-- Aporte mensal ainda não realizado.
-- Queda relevante do patrimônio.
-- Reserva de emergência sendo utilizada.
-- Dividendos ou juros recebidos.
+```text
+EasyMoney/
+├── backend/finance-api/  # API Spring Boot e testes de backend
+├── finance-web/          # Interface React e testes de frontend
+├── docs/                 # Ideias, demandas e documentação técnica
+├── docker-compose.yml    # PostgreSQL para desenvolvimento local
+└── README.md
+```
 
-12. Relatórios e organização familiar
-- Fechamento mensal automático.
-- Relatório anual.
-- Comparação entre períodos.
-- Exportação para PDF e planilha.
-- Espaços pessoal, casal, família ou empresa.
-- Permissões por usuário.
-- Comentários e anexos em transações.
-- Prestação de contas entre responsáveis.
+## Documentação e próximos passos
+
+A proposta inicial organiza o desenvolvimento em infraestrutura, autenticação, cadastro de dados, agregações no backend e visualização com gráficos. A evolução prevista inclui orçamento mensal, patrimônio líquido, reserva de emergência, análise de carteira, dívidas, importação de dados e relatórios.
+
+- [Proposta inicial e etapas do projeto (PDF)](docs/IdeiaInicialFinance.pdf).
+- [Demandas e ideias para evolução](docs/demandas.md).
+- [Implementações, decisões técnicas e validações pendentes](docs/implementacao-proximos-passos.md).
+
+Para sugerir uma melhoria ou relatar um problema, [abra uma issue](https://github.com/rafaeliannini/EasyMoney/issues) com o contexto, o comportamento esperado e, no caso de erros, os passos para reproduzir.
