@@ -16,6 +16,8 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: https://securetoken.google.com/easymoney-app-833c8
+          issuer-uri: https://securetoken.google.com/${FIREBASE_PROJECT_ID:easymoney-app-833c8}
+          audiences:
+            - ${FIREBASE_PROJECT_ID:easymoney-app-833c8}
 server:
   port: 8080

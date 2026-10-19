@@ -102,14 +102,14 @@ cd backend/finance-api
 
 No Linux/macOS, use `./mvnw spring-boot:run` no mesmo diretório.
 
-**Ao usar um projeto Firebase próprio**, configure o emissor dos tokens no mesmo terminal, antes de iniciar a API:
+**Ao usar um projeto Firebase próprio**, configure o ID do projeto no mesmo terminal, antes de iniciar a API. Ele será usado para validar o emissor (`iss`) e a audiência (`aud`) dos tokens:
 
 ```powershell
-$env:SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI="https://securetoken.google.com/seu-projeto"
+$env:FIREBASE_PROJECT_ID="seu-projeto"
 .\mvnw.cmd spring-boot:run
 ```
 
-O ID desse projeto deve ser o mesmo de `VITE_FIREBASE_PROJECT_ID`. Sem a substituição, o backend usa o projeto definido em [application.yml](backend/finance-api/src/main/resources/application.yml).
+O ID desse projeto deve ser o mesmo de `VITE_FIREBASE_PROJECT_ID`. No Render, configure `FIREBASE_PROJECT_ID` com o ID do projeto Firebase usado na Vercel. Sem a substituição, o backend usa o projeto definido em [application.yml](backend/finance-api/src/main/resources/application.yml).
 
 A API inicia em `http://localhost:8080`. Confira seu funcionamento em [http://localhost:8080/api/health](http://localhost:8080/api/health). As rotas de dados exigem autenticação.
 
@@ -136,7 +136,7 @@ Configure estas variáveis no ambiente do processo da API quando precisar substi
 | `DB_URL` | Conexão JDBC; padrão `jdbc:postgresql://localhost:5433/finance_db`. |
 | `DB_USER` | Usuário do banco; padrão `finance_user`. |
 | `DB_PASSWORD` | Senha do banco; padrão local `finance_password`. |
-| `SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI` | Emissor dos tokens do projeto Firebase usado pelo frontend. |
+| `FIREBASE_PROJECT_ID` | ID do projeto Firebase usado pelo frontend; configura o emissor (`iss`) e a audiência (`aud`) esperados nos tokens. |
 | `FINANCE_CDI_ENABLED` | Use `false` para desativar a atualização automática por CDI. |
 
 O backend não lê automaticamente o `.env.local` do frontend. A criação e atualização das tabelas seguem a configuração atual do Hibernate (`ddl-auto: update`).
